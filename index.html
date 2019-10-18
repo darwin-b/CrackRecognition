@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Crack Detection</title>
+    <script async src="opencv.js" type="text/javascript"></script>
+    <script src="https://code.responsivevoice.org/responsivevoice.js?key=8cNaaFuo"></script>
+<!--     <script src="https://aframe.io/releases/0.9.2/aframe.min.js"></script> -->
+    <!-- <script src="https://unpkg.com/aframe-text-geometry-component@^0.5.0/dist/aframe-text-geometry-component.min.js"></script>  -->
+</head>
+<body>
+    <div>
+        <h2>Crack Detection</h2>
+        <!-- <p id="status">OpenCV.js is loading...</p> -->
+        <img id="inputImg" style="display: none;" />
+<!--         <input type="file" id="inputImg" accept="image/*;capture=camera"> -->
+        <input type="file" id="fileInput" />
+        <canvas id="canvasOutput"></canvas>
+    </div>
+    
+    
+
+
+    <div>
+        <!-- <a-scene embedded arjs=’sourceType: webcam;’>
+            <a-marker preset=’hiro’>
+                <a-entity fbx-model="src: url('https://github.com/TejasReddy9/crack_detection/blob/master/man/man.FBX?raw=true');" ></a-entity>
+            </a-marker>
+            <a-entity camera></a-entity>
+        </a-scene> -->
+        <!-- <a-scene>
+            <a-entity fbx-model="src: url('https://github.com/TejasReddy9/crack_detection/blob/master/man/man.FBX?raw=true');" position="1 0.75 -3" ></a-entity>
+            <a-text position="1 0.75 -3" value="Hello, World!"></a-text>
+            <a-box position="10 10 -3" rotation="0 45 0" color="#4CC3D9"></a-box>
+            <a-sky color="#ECECEC"></a-sky>
+        </a-scene> -->
+        <!-- <a-scene>
+            <a-assets>
+                <a-asset-item id="optimerBoldFont" src="https://rawgit.com/mrdoob/three.js/dev/examples/fonts/optimer_bold.typeface.json"></a-asset-item>
+            </a-assets>
+            <a-entity text-geometry="value: What's up"></a-entity>
+            <a-entity text-geometry="value: Dog?; font: #optimerBoldFont"></a-entity>
+        </a-scene> -->
+        <!-- <a-scene>
+            <a-assets>
+                <img id="my-image" src="../test_images/1.jpg">
+            </a-assets>
+            <a-image src="#my-image" position="-1 0.5 -3"></a-image>
+        </a-scene> -->
+<!--         <a-scene>
+            <a-box position="-1 0.5 -3" rotation="0 45 0" color="#4CC3D9"></a-box>
+            <a-sphere position="0 1.25 -5" radius="1.25" color="#EF2D5E"></a-sphere>
+            <a-cylinder position="1 0.75 -3" radius="0.5" height="1.5" color="#FFC65D"></a-cylinder>
+            <a-plane position="0 0 -4" rotation="-90 0 0" width="4" height="4" color="#7BC8A4"></a-plane>
+          </a-scene> -->
+    </div>
+
+    <script type="text/javascript">
+
+        /*
+        let video = document.getElementById('videoInput');
+        let src = new cv.Mat(video.height, video.width, cv.CV_8UC4);
+        let dst = new cv.Mat(video.height, video.width, cv.CV_8UC1);
+        let cap = new cv.VideoCapture(video);
+
+        const FPS = 30;
+        function processVideo() {
+            try {
+                if (!streaming) {
+                    // clean and stop.
+                    src.delete();
+                    dst.delete();
+                    return;
+                }
+                let begin = Date.now();
+                // start processing.
+                cap.read(src);
+                cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+                cv.imshow('canvasOutput', dst);
+                // schedule the next one.
+                let delay = 1000/FPS - (Date.now() - begin);
+                setTimeout(processVideo, delay);
+            } catch (err) {
+                utils.printError(err);
+            }
+        };
+
+        // schedule the first one.
+        setTimeout(processVideo, 0);
+        */
+
+        let img_input = document.getElementById('inputImg');
+        let file_input = document.getElementById('fileInput');
+
+        file_input.addEventListener('change', (e) => {
+            img_input.src = URL.createObjectURL(e.target.files[0]);
+        }, false);
+
+        img_input.onload = function() {
+            let mat = cv.imread(img_input);
+            cv.cvtColor(mat, mat, cv.COLOR_RGB2GRAY)
+
+            let blur = new cv.Mat();
+            let ksize = new cv.Size(5,5);
+            cv.GaussianBlur(mat, blur, ksize, 0, 0, cv.BORDER_DEFAULT)
+
+            let diff_line = new cv.Mat();
+            let mask = new cv.Mat();
+            let dtype = -1;
+            cv.subtract(blur, mat, diff_line, mask, dtype);
+            
+
+            // mat = cv.subtract(blur, mat)
+            // mat = cv.Canny(mat, 300, 300)
+
+            let canny = new cv.Mat();
+            // cv.cvtColor(src, src, cv.COLOR_RGB2GRAY, 0);
+            // You can try more different parameters
+            cv.Canny(diff_line, canny, 100, 200, 3, false);
+            
+            
+            let resizedcanny = new cv.Mat();
+            let dsize = new cv.Size(300, 300);
+            // You can try more different parameters
+            cv.resize(canny, resizedcanny, dsize, 0, 0, cv.INTER_AREA);
+
+
+
+            let total_pixels = canny.rows * canny.cols
+            let non_black_pixels = cv.countNonZero(canny)
+            let intensity = non_black_pixels*1000/total_pixels
+
+            let scale = ""
+            
+            if (intensity > 5){
+                scale = "High intensity crack"
+            }
+            else if(intensity > 1 && intensity <= 5){
+                scale = "Significant crack"
+            }
+            else if(intensity <= 1) {
+                scale = "No crack detected"
+            }
+
+            console.log(scale)
+
+            var msg = new SpeechSynthesisUtterance(scale);
+            window.speechSynthesis.speak(msg);
+
+
+            cv.imshow('canvasOutput', resizedcanny);
+            mat.delete();
+            blur.delete();
+            diff_line.delete(); 
+            mask.delete();
+            canny.delete();
+            resizedcanny.delete();
+        };
+
+        // function onOpenCvReady() {
+        //     document.getElementById('status').innerHTML = 'OpenCV.js is ready.';
+        // }
+    </script>
+</body>
+</html>
