@@ -1,2 +1,2 @@
-[# CrackRecognition](https://crackrecognition.web.app/)
+# [CrackRecognition](https://crackrecognition.web.app/)
 Detects cracks in uploaded image
